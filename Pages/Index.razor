@@ -1,0 +1,25 @@
+﻿@page "/"
+@using SkiaSharp.Views.Blazor
+
+<PageTitle>Index</PageTitle>
+
+<div class="parent">
+    <div class="box">
+        <SKCanvasView OnPaintSurface="@OnPaintSurface" EnableRenderLoop="true" />
+    </div>
+    <div class="text-center">Guess the color in Hex!</div>
+    <EditForm EditContext="@EditContext">
+        <DataAnnotationsValidator />
+        <InputText class="input-box" id="color" placeholder="#000000" name="name" Value="@Color" ValueChanged="OnChanged" ValueExpression="()=>InputColor.Color"/>
+    </EditForm>
+    <div class="text-center">Correct Count:@CorrectCount</div>
+    <div class="text-center">@CurrentColorHex</div>
+    @if(!IsCorrectFormat)
+    {
+        <div class="text-center">Wrong Format!</div>
+    }
+    else if(!IsCorrect)
+    {
+        <div class="text-center">Wrong!</div>
+    }
+</div>
