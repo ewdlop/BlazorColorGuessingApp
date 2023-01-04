@@ -7,26 +7,32 @@ namespace ColorGuessingApp.Pages;
 
 public partial class Index
 {
+    public enum ColorGuessingResultStatus
+    {
+        Correct,
+        Incorrect,
+        Close,
+        WrongFormat
+    }
     private EditContext? EditContext { get; set; }
-    private HexColor InputColor = new HexColor();
-    private string CurrentColorHex { get; set; } = "#000000";
-    private int CorrectCount = 0;
-    private int CurrentColorInt = 0;
-    private bool IsCorrect = true;
-    private bool IsCorrectFormat = true;
+    private HexColor _inputColor = new HexColor();
     private readonly Random RNG = new Random();
+    public string PreviousColorHex { get; private set; } = "#000000";
+    public string CurrentColorHex { get; private set; } = "#000000";
+    public ColorGuessingResultStatus Status { get; private set; } = ColorGuessingResultStatus.Correct;
+    public int CorrectCount { get; private set; } = 0;
+    public int CurrentColorInt { get; private set; } = 0;
     private void OnPaintSurface(SKPaintSurfaceEventArgs e)
     {
         var canvas = e.Surface.Canvas;
         canvas.ClipRect(new SKRect(0,0,200,200));
         byte[] RGB = BitConverter.GetBytes(CurrentColorInt);
         canvas.Clear(new SKColor(RGB[0], RGB[1], RGB[2]));
-
     }
 
     protected override void OnInitialized()
     {
-        EditContext = new(InputColor);
+        EditContext = new(_inputColor);
         CurrentColorHex = GenerateRandomHexColor();
         base.OnInitialized();
     }
@@ -40,36 +46,72 @@ public partial class Index
         } while (CurrentColorHex.ToLower().Equals(nextColorHex.ToLower()));
         return nextColorHex;
     }
-    public string Color => InputColor.Color;
+    public string Color => _inputColor.Color;
     public void OnChanged(string color)
     {
-        if (InputColor.Color == color) return;
-        InputColor.Color = color;
+        if (_inputColor.Color == color) return;
+        _inputColor.Color = color;
         if (EditContext?.Validate() ?? false)
         {
-            IsCorrectFormat = true;
-            if (CurrentColorHex.ToLower() == InputColor.Color.ToLower())
+            int distance = CalculateColorDistance(CurrentColorHex, _inputColor.Color);
+            if (distance == 0)
             {
                 CorrectCount++;
-                CurrentColorHex = GenerateRandomHexColor();
-                InputColor.Color = "#";
-                IsCorrect = true;
+                Reset();
+                Status = ColorGuessingResultStatus.Correct;
+            }
+            else if(distance <= 30)
+            {
+                CorrectCount++;
+                Reset();
+                Status = ColorGuessingResultStatus.Close;
             }
             else
             {
-                IsCorrect = false;
+                Status = ColorGuessingResultStatus.Incorrect;
             }
         }
         else
         {
-            IsCorrectFormat = false;
+            Status = ColorGuessingResultStatus.WrongFormat;
         }
     }
+    private static byte[] HexColorStringToBytes(string colorHex)
+    {
+        if (colorHex.StartsWith("#"))
+        {
+            colorHex = colorHex[1..];
+        }
+        return Enumerable.Range(0, colorHex.Length)
+            .Where(x => x % 2 == 0)
+            .Select(x => Convert.ToByte(colorHex.Substring(x, 2), 16))
+            .ToArray();
+    }
+
+    private static int CalculateColorDistance(string colorHex1, string colorHex2)
+    {
+        byte[] RGB1 = HexColorStringToBytes(colorHex1);
+        byte[] RGB2 = HexColorStringToBytes(colorHex2);
+        int distance = 0;
+        for (int i = 0; i < 3; i++)
+        {
+            distance += Math.Abs(RGB1[i] - RGB2[i]);
+        }
+        return distance;
+    }
+
+    public void Reset()
+    {
+        PreviousColorHex = CurrentColorHex;
+        CurrentColorHex = GenerateRandomHexColor();
+        _inputColor.Color = "#";
+    }
 }
+
 public class HexColor
 {
     [RegularExpression(@"^#(?:[0-9a-fA-F]{6})$",
          ErrorMessage = "Must be a color hex")]
     public string Color { get; set; } = "#000000";
 }
-    
+   
